@@ -805,6 +805,12 @@
         }
         setTimeout(checkUpdate, 5000);
         setInterval(checkUpdate, 30 * 60 * 1000);
+        navigator.serviceWorker.addEventListener('controllerchange', function() {
+          setTimeout(checkUpdate, 1000);
+        });
+        document.addEventListener('visibilitychange', function() {
+          if (document.visibilityState === 'visible') checkUpdate();
+        });
       })
       .catch(function() {
         swStatus.textContent = 'Offline caching unavailable';
