@@ -488,6 +488,15 @@
     color: #c4f042;
   }
 
+  .version-display {
+    margin-top: 8px;
+    font-size: 8px;
+    color: #555;
+    text-align: center;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
   #result-area { display: none; }
   #result-area.visible { display: block; }
 </style>
@@ -626,6 +635,7 @@
     <button class="reset-canary-btn" id="reset-canary-bottom" type="button">Reset Canary</button>
 
     <div class="sw-status" id="sw-status"></div>
+    <div class="version-display" id="version-display"></div>
     </form>
   </div>
 </div>
@@ -633,6 +643,12 @@
 <script>
 (function() {
   'use strict';
+
+  // =============================================
+  // VERSION
+  // =============================================
+  const VERSION = '1.0.0';
+  document.getElementById('version-display').textContent = 'v' + VERSION;
 
   // =============================================
   // CANARY SYSTEM
