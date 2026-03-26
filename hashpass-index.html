@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hashpass">
+<link rel="manifest" href="/manifest.json">
+<title>Hashpass</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { height: 100%; }
+
+  body {
+    min-height: 100%;
+    background: #0e0e10;
+    color: #e0ddd5;
+    font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Menlo', monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    -webkit-text-size-adjust: 100%;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* --- Canary background layer --- */
+  #canary-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    transition: opacity 0.8s ease;
+    opacity: 0;
+  }
+  #canary-bg.visible { opacity: 1; }
+
+  /* --- Canary text watermark layer --- */
+  #canary-watermark {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+  }
+  #canary-watermark.visible { opacity: 1; }
+  .watermark-inner {
+    position: absolute;
+    white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 6px;
+    color: rgba(255, 255, 255, 0.04);
+    line-height: 3.2;
+    transform: rotate(-18deg);
+    transform-origin: center center;
+    top: -40%;
+    left: -20%;
+    width: 200%;
+    height: 200%;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* --- Main content sits above background --- */
+  .card {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 520px;
+    background: rgba(17, 17, 19, 0.88);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .header {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .header-text h1 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #c4f042;
+    margin-bottom: 6px;
+  }
+  .header-text p {
+    font-size: 11px;
+    color: #666;
+    letter-spacing: 0.5px;
+    line-height: 1.5;
+  }
+
+  /* --- Small canary badge in header --- */
+  .canary-badge {
+    flex-shrink: 0;
+    margin-left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.03);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: border-color 0.2s;
+  }
+  .canary-badge:hover { border-color: rgba(255,255,255,0.12); }
+  .canary-badge .badge-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
+  }
+  .canary-badge .badge-dot.unset {
+    background: #f59e0b;
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
+  }
+  .canary-badge span {
+    font-size: 9px;
+    color: #555;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* --- Modals --- */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .modal-overlay.visible { display: flex; }
+  .modal {
+    background: #111113;
+    border: 1px solid #1e1e22;
+    border-radius: 16px;
+    padding: 28px 24px;
+    max-width: 420px;
+    width: 100%;
+  }
+  .modal h2 {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #c4f042;
+    margin-bottom: 12px;
+  }
+  .modal p {
+    font-size: 11px;
+    color: #888;
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+  .modal .warn {
+    font-size: 10px;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.06);
+    border: 1px solid rgba(245, 158, 11, 0.15);
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+  .modal .canary-fields { margin-bottom: 16px; }
+  .modal .canary-fields label {
+    display: block;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 6px;
+  }
+  .modal .canary-fields label:not(:first-child) { margin-top: 12px; }
+  .modal input[type="text"] {
+    width: 100%;
+    background: #0a0a0b;
+    border: 1px solid #222228;
+    border-radius: 8px;
+    padding: 14px;
+    font-family: inherit;
+    font-size: 16px;
+    color: #e0ddd5;
+    outline: none;
+  }
+  .modal input[type="text"]:focus {
+    border-color: #c4f042;
+    box-shadow: 0 0 0 2px rgba(196, 240, 66, 0.08);
+  }
+  .modal input::placeholder { color: #333; }
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .modal-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .modal-btn.primary { background: #c4f042; color: #0a0a0b; }
+  .modal-btn.secondary { background: #1e1e22; color: #888; }
+
+  /* --- Update banner --- */
+  .update-bar {
+    display: none;
+    padding: 10px 24px;
+    background: rgba(96, 165, 250, 0.06);
+    border-bottom: 1px solid rgba(96, 165, 250, 0.15);
+    font-size: 10px;
+    color: #60a5fa;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .update-bar.visible { display: flex; }
+  .update-bar button {
+    background: none;
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    color: #60a5fa;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-family: inherit;
+    font-size: 10px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .update-bar .hash-compare { font-size: 9px; color: #555; margin-top: 2px; }
+
+  .body { padding: 24px 24px 28px; }
+
+  .field { margin-bottom: 18px; }
+  .section-label,
+  .field label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #666;
+    margin-bottom: 8px;
+  }
+
+  .input-wrap { position: relative; display: flex; align-items: center; }
+  .input-wrap input {
+    width: 100%;
+    background: rgba(10, 10, 11, 0.8);
+    border: 1px solid #222228;
+    border-radius: 8px;
+    padding: 14px;
+    font-family: inherit;
+    font-size: 16px;
+    color: #e0ddd5;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .input-wrap input:focus {
+    border-color: #c4f042;
+    box-shadow: 0 0 0 2px rgba(196, 240, 66, 0.08);
+  }
+  .input-wrap input::placeholder { color: #333; }
+
+  .toggle-vis {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #555;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 8px 10px;
+    font-family: inherit;
+    transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .toggle-vis:hover, .toggle-vis:active { color: #c4f042; }
+
+  .special-chars-section { margin-bottom: 18px; }
+  .special-chars-input {
+    width: 100%;
+    background: rgba(10, 10, 11, 0.8);
+    border: 1px solid #222228;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: inherit;
+    font-size: 14px;
+    color: #e0ddd5;
+    outline: none;
+    transition: border-color 0.2s;
+    word-break: break-all;
+  }
+  .special-chars-input:focus {
+    border-color: #c4f042;
+    box-shadow: 0 0 0 2px rgba(196, 240, 66, 0.08);
+  }
+
+  .length-row { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  .length-input {
+    width: 60px;
+    text-align: center;
+    background: rgba(10, 10, 11, 0.8);
+    border: 1px solid #222228;
+    border-radius: 6px;
+    padding: 10px 4px;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    color: #c4f042;
+    outline: none;
+  }
+  .length-input:focus { border-color: #c4f042; }
+
+  .length-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 3px;
+    background: #222;
+    border-radius: 2px;
+    outline: none;
+  }
+  .length-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #c4f042;
+    cursor: pointer;
+    border: 2px solid #0a0a0b;
+  }
+
+  .gen-btn {
+    width: 100%;
+    padding: 16px;
+    background: #c4f042;
+    color: #0a0a0b;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .gen-btn:hover { background: #d4ff52; }
+  .gen-btn:active { transform: scale(0.98); }
+  .gen-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .result {
+    margin-top: 20px;
+    background: rgba(10, 10, 11, 0.7);
+    border: 1px solid #1e1e22;
+    border-radius: 10px;
+    overflow: hidden;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-pw {
+    padding: 20px 16px;
+    font-size: 15px;
+    font-weight: 500;
+    word-break: break-all;
+    line-height: 1.6;
+    letter-spacing: 1.5px;
+    color: #e0ddd5;
+    text-align: center;
+    border-bottom: 1px solid #1a1a1e;
+  }
+
+  .result-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .char-stats {
+    display: flex;
+    gap: 10px;
+    font-size: 10px;
+    color: #555;
+    letter-spacing: 0.5px;
+    flex-wrap: wrap;
+  }
+  .char-stats span { display: flex; gap: 3px; align-items: center; }
+  .stat-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+
+  .copy-btn {
+    background: none;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    color: #888;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .copy-btn:hover, .copy-btn:active { border-color: #c4f042; color: #c4f042; }
+  .copy-btn.copied {
+    border-color: #c4f042;
+    color: #c4f042;
+    background: rgba(196, 240, 66, 0.06);
+  }
+
+  .info {
+    margin-top: 16px;
+    padding: 14px;
+    background: rgba(196, 240, 66, 0.03);
+    border: 1px solid rgba(196, 240, 66, 0.08);
+    border-radius: 8px;
+    font-size: 10px;
+    color: #666;
+    line-height: 1.6;
+    letter-spacing: 0.3px;
+  }
+  .info strong { color: #999; }
+
+  .sw-status {
+    margin-top: 10px;
+    font-size: 9px;
+    color: #444;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+  .sw-status .offline { color: #c4f042; }
+
+  .reset-canary-btn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid #222228;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #444;
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .reset-canary-btn:hover, .reset-canary-btn:active {
+    border-color: #c4f042;
+    color: #c4f042;
+  }
+
+  #result-area { display: none; }
+  #result-area.visible { display: block; }
+</style>
+</head>
+<body>
+
+<!-- Canary gradient background -->
+<div id="canary-bg"></div>
+
+<!-- Canary text watermark -->
+<div id="canary-watermark">
+  <div class="watermark-inner" id="watermark-inner"></div>
+</div>
+
+<!-- Canary setup modal -->
+<div class="modal-overlay" id="canary-modal">
+  <div class="modal">
+    <h2>Set Your Integrity Canary</h2>
+    <p>Choose two secrets. Together they generate the unique background gradient and watermark text you see behind the app. Memorize what it looks like.</p>
+    <p>Every time you open Hashpass, glance at the background. If the colors or watermark look wrong or are missing, the page may have been tampered with &mdash; do not enter your master secret.</p>
+    <div class="warn">Stored only in your browser's local cache. A phishing clone cannot reproduce your background. If you clear browser data, you'll need to set them again.</div>
+    <div class="canary-fields">
+      <label>Canary Secret (drives the gradient colors)</label>
+      <input type="text" id="canary-input" placeholder="e.g. purple-fish-42" autocapitalize="none" autocorrect="off" spellcheck="false">
+      <label>Watermark Text (repeated behind the card)</label>
+      <input type="text" id="canary-text-input" placeholder="e.g. my-marker" autocapitalize="none" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn primary" id="canary-save">Set Canary</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset canary modal -->
+<div class="modal-overlay" id="canary-reset-modal">
+  <div class="modal">
+    <h2>Reset Canary</h2>
+    <p>Update your canary. The background gradient and watermark will change.</p>
+    <div class="canary-fields">
+      <label>Canary Secret</label>
+      <input type="text" id="canary-reset-input" placeholder="new canary secret" autocapitalize="none" autocorrect="off" spellcheck="false">
+      <label>Watermark Text</label>
+      <input type="text" id="canary-reset-text-input" placeholder="new watermark text" autocapitalize="none" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn secondary" id="canary-reset-cancel">Cancel</button>
+      <button class="modal-btn primary" id="canary-reset-save">Update</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="header">
+    <div class="header-text">
+      <h1>&#x26BF; Hashpass</h1>
+      <p>Deterministic passwords. Nothing stored, fully offline.</p>
+    </div>
+    <div class="canary-badge" id="canary-badge" title="Integrity canary — tap to reset">
+      <div class="badge-dot unset" id="badge-dot"></div>
+      <span>canary</span>
+    </div>
+  </div>
+
+  <div class="update-bar" id="update-bar">
+    <div>
+      <div>Update available</div>
+      <div class="hash-compare" id="update-hashes"></div>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <button id="update-dismiss">Dismiss</button>
+      <button id="update-apply">Apply</button>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="field">
+      <label>Site / Service</label>
+      <div class="input-wrap">
+        <input type="text" id="site" placeholder="e.g. github.com" autocapitalize="none" autocorrect="off" spellcheck="false">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Master Secret</label>
+      <div class="input-wrap">
+        <input type="password" id="salt" placeholder="your secret passphrase">
+        <button class="toggle-vis" id="toggle-salt" type="button">SHOW</button>
+      </div>
+    </div>
+
+    <div class="section-label">Special Characters</div>
+    <div class="special-chars-section">
+      <label style="font-size:10px;color:#666;display:block;margin-bottom:8px;">Customize allowed special characters:</label>
+      <input type="text" class="special-chars-input" id="special-chars" placeholder="Enter special characters to allow">
+    </div>
+
+    <div class="field">
+      <label>PBKDF2 Salt (optional)</label>
+      <div class="input-wrap">
+        <input type="text" id="pbkdf2-salt" placeholder="defaults to 'salt'" autocapitalize="none" autocorrect="off" spellcheck="false">
+      </div>
+    </div>
+
+    <div class="section-label">Length: <span id="length-display">12</span></div>
+    <div class="length-row">
+      <input class="length-input" type="number" id="length-num" min="4" max="64" value="12">
+      <input class="length-slider" type="range" id="length-range" min="4" max="64" value="12">
+    </div>
+
+    <div style="margin:24px 0;padding:18px 0;border-top:1px solid #222228;border-bottom:1px solid #222228;">
+      <label style="display:block;font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#666;margin-bottom:4px;">Metadata</label>
+      <label style="display:block;font-size:9px;color:#555;margin-bottom:12px;line-height:1.4;">Configuration string for recreating passwords. Copy and share with other devices.</label>
+      <div class="input-wrap">
+        <input type="text" id="result-metadata" placeholder="site|specialchars|length" autocapitalize="none" autocorrect="off" spellcheck="false">
+        <button class="toggle-vis" id="copy-metadata-btn" type="button" style="font-size:10px;">COPY</button>
+      </div>
+    </div>
+
+    <button class="gen-btn" id="gen-btn" type="button" disabled>Generate Password</button>
+
+    <div id="result-area">
+      <div class="result">
+        <div class="result-pw" id="result-pw"></div>
+        <div class="result-footer">
+          <div class="char-stats" id="char-stats"></div>
+          <button class="copy-btn" id="copy-btn" type="button">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="info">
+      <strong>How it works:</strong> Your site name and master secret are combined and run through PBKDF2-SHA256 with 600,000 iterations. The derived key bytes are mapped to your chosen character set. Passwords always include uppercase, lowercase, and numerals. Nothing is stored or transmitted &mdash; same inputs always produce the same password.
+    </div>
+
+    <button class="reset-canary-btn" id="reset-canary-bottom" type="button">Reset Canary</button>
+
+    <div class="sw-status" id="sw-status"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // =============================================
+  // CANARY SYSTEM
+  // =============================================
+  const CANARY_CACHE = 'hashpass-canary';
+  const CANARY_SECRET_KEY = '/canary-secret';
+  const CANARY_TEXT_KEY = '/canary-text';
+
+  async function saveCanary(secret, text) {
+    const cache = await caches.open(CANARY_CACHE);
+    await cache.put(CANARY_SECRET_KEY, new Response(secret));
+    await cache.put(CANARY_TEXT_KEY, new Response(text));
+  }
+
+  async function loadCanary() {
+    try {
+      const cache = await caches.open(CANARY_CACHE);
+      const secretResp = await cache.match(CANARY_SECRET_KEY);
+      const textResp = await cache.match(CANARY_TEXT_KEY);
+      const secret = secretResp ? await secretResp.text() : null;
+      const text = textResp ? await textResp.text() : null;
+      return (secret && text) ? { secret, text } : null;
+    } catch { return null; }
+  }
+
+  async function renderCanary(secret, watermarkText) {
+    const scripts = document.querySelectorAll('script');
+    let pageCode = '';
+    scripts.forEach(s => { if (s.textContent) pageCode += s.textContent; });
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(secret + '|' + pageCode);
+    const hashBuf = await crypto.subtle.digest('SHA-256', data);
+    const bytes = new Uint8Array(hashBuf);
+
+    // --- Generate gradient background — distinct and recognizable ---
+    const hue1 = (bytes[0] / 255) * 360;
+    const hue2 = (hue1 + 80 + (bytes[1] / 255) * 120) % 360;
+    const hue3 = (hue2 + 90 + (bytes[2] / 255) * 100) % 360;
+    const hue4 = (hue3 + 70 + (bytes[3] / 255) * 80) % 360;
+
+    // Richer tones — saturation 40-70%, lightness 12-22%
+    const sat = (b) => 40 + (b / 255) * 30;
+    const lit = (b) => 12 + (b / 255) * 10;
+
+    const c1 = 'hsl(' + hue1 + ',' + sat(bytes[4]) + '%,' + lit(bytes[5]) + '%)';
+    const c2 = 'hsl(' + hue2 + ',' + sat(bytes[6]) + '%,' + lit(bytes[7]) + '%)';
+    const c3 = 'hsl(' + hue3 + ',' + sat(bytes[8]) + '%,' + lit(bytes[9]) + '%)';
+    const c4 = 'hsl(' + hue4 + ',' + sat(bytes[10]) + '%,' + lit(bytes[11]) + '%)';
+
+    const angle1 = (bytes[12] / 255) * 360;
+    const angle2 = (angle1 + 90 + (bytes[13] / 255) * 90) % 360;
+
+    const bg = document.getElementById('canary-bg');
+    bg.style.background =
+      'linear-gradient(' + angle1 + 'deg, ' + c1 + ' 0%, ' + c2 + ' 50%, transparent 100%),' +
+      'linear-gradient(' + angle2 + 'deg, ' + c3 + ' 0%, ' + c4 + ' 60%, transparent 100%),' +
+      'radial-gradient(ellipse at ' + (30 + bytes[14] % 40) + '% ' + (20 + bytes[15] % 60) + '%, ' + c1 + ' 0%, transparent 60%),' +
+      'radial-gradient(ellipse at ' + (60 + bytes[16] % 30) + '% ' + (50 + bytes[17] % 40) + '%, ' + c3 + ' 0%, transparent 50%),' +
+      '#0a0a0b';
+    bg.classList.add('visible');
+
+    // --- Generate watermark text layer ---
+    const wm = document.getElementById('watermark-inner');
+    const displayText = watermarkText.toUpperCase();
+    const rowCount = 40;
+    let html = '';
+    for (let i = 0; i < rowCount; i++) {
+      const offset = (bytes[(i + 18) % 32] % 60) - 30;
+      const spacer = '\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0';
+      const rowText = (displayText + spacer).repeat(30);
+      html += '<div style="margin-left:' + offset + 'px">' + rowText + '</div>';
+    }
+    wm.innerHTML = html;
+    document.getElementById('canary-watermark').classList.add('visible');
+
+    // Update badge dot
+    document.getElementById('badge-dot').classList.remove('unset');
+  }
+
+  function showCanaryModal() {
+    document.getElementById('canary-modal').classList.add('visible');
+    setTimeout(function() { document.getElementById('canary-input').focus(); }, 100);
+  }
+
+  async function initCanary() {
+    const canary = await loadCanary();
+    if (!canary) {
+      showCanaryModal();
+    } else {
+      await renderCanary(canary.secret, canary.text);
+    }
+  }
+
+  document.getElementById('canary-save').addEventListener('click', async function() {
+    const secret = document.getElementById('canary-input').value.trim();
+    const text = document.getElementById('canary-text-input').value.trim();
+    if (!secret || !text) return;
+    await saveCanary(secret, text);
+    await renderCanary(secret, text);
+    document.getElementById('canary-modal').classList.remove('visible');
+  });
+  document.getElementById('canary-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('canary-text-input').focus();
+  });
+  document.getElementById('canary-text-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('canary-save').click();
+  });
+
+  document.getElementById('canary-badge').addEventListener('click', function() {
+    document.getElementById('canary-reset-modal').classList.add('visible');
+    setTimeout(function() { document.getElementById('canary-reset-input').focus(); }, 100);
+  });
+  document.getElementById('reset-canary-bottom').addEventListener('click', function() {
+    document.getElementById('canary-reset-modal').classList.add('visible');
+    setTimeout(function() { document.getElementById('canary-reset-input').focus(); }, 100);
+  });
+  document.getElementById('canary-reset-cancel').addEventListener('click', function() {
+    document.getElementById('canary-reset-modal').classList.remove('visible');
+    document.getElementById('canary-reset-input').value = '';
+    document.getElementById('canary-reset-text-input').value = '';
+  });
+  document.getElementById('canary-reset-save').addEventListener('click', async function() {
+    var secret = document.getElementById('canary-reset-input').value.trim();
+    var text = document.getElementById('canary-reset-text-input').value.trim();
+    if (!secret || !text) return;
+    await saveCanary(secret, text);
+    await renderCanary(secret, text);
+    document.getElementById('canary-reset-modal').classList.remove('visible');
+    document.getElementById('canary-reset-input').value = '';
+    document.getElementById('canary-reset-text-input').value = '';
+  });
+  document.getElementById('canary-reset-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('canary-reset-text-input').focus();
+  });
+  document.getElementById('canary-reset-text-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('canary-reset-save').click();
+  });
+
+
+  // =============================================
+  // SERVICE WORKER & UPDATE SYSTEM
+  // =============================================
+  var swStatus = document.getElementById('sw-status');
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(function() {
+        swStatus.innerHTML = '<span class="offline">Cached offline</span> \u00b7 tap canary badge to manage';
+        function checkUpdate() {
+          if (navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({ type: 'CHECK_UPDATE' });
+          }
+        }
+        setTimeout(checkUpdate, 5000);
+        setInterval(checkUpdate, 30 * 60 * 1000);
+      })
+      .catch(function() {
+        swStatus.textContent = 'Offline caching unavailable';
+      });
+
+    navigator.serviceWorker.addEventListener('message', function(event) {
+      if (event.data.type === 'UPDATE_STATUS' && event.data.hasUpdate) {
+        document.getElementById('update-bar').classList.add('visible');
+        document.getElementById('update-hashes').textContent =
+          'cached: ' + event.data.currentHash + ' \u2192 new: ' + event.data.newHash;
+      }
+      if (event.data.type === 'UPDATE_APPLIED') {
+        location.reload();
+      }
+    });
+
+    document.getElementById('update-dismiss').addEventListener('click', function() {
+      document.getElementById('update-bar').classList.remove('visible');
+    });
+    document.getElementById('update-apply').addEventListener('click', function() {
+      navigator.serviceWorker.controller.postMessage({ type: 'APPLY_UPDATE' });
+    });
+  } else {
+    swStatus.textContent = 'Service Worker not supported';
+  }
+
+
+  // =============================================
+  // PASSWORD GENERATOR
+  // =============================================
+  var CHARSETS = {
+    upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+    lower: 'abcdefghijklmnopqrstuvwxyz',
+    digits: '0123456789'
+  };
+
+  var DEFAULT_SPECIAL_CHARS = '!%^*()-_=+[]{};:,';
+  var specialChars = DEFAULT_SPECIAL_CHARS;
+  var currentPassword = '';
+
+  var siteEl = document.getElementById('site');
+  var saltEl = document.getElementById('salt');
+  var toggleSaltBtn = document.getElementById('toggle-salt');
+  var lengthNum = document.getElementById('length-num');
+  var lengthRange = document.getElementById('length-range');
+  var lengthDisplay = document.getElementById('length-display');
+  var genBtn = document.getElementById('gen-btn');
+  var resultArea = document.getElementById('result-area');
+  var resultPw = document.getElementById('result-pw');
+  var charStats = document.getElementById('char-stats');
+  var copyBtn = document.getElementById('copy-btn');
+  var specialCharsEl = document.getElementById('special-chars');
+  var pbkdf2SaltEl = document.getElementById('pbkdf2-salt');
+  var resultMetadata = document.getElementById('result-metadata');
+  var copyMetadataBtn = document.getElementById('copy-metadata-btn');
+
+  async function derivePassword(site, masterSecret, length, specialCharset, pbkdf2Salt) {
+    var encoder = new TextEncoder();
+    var input = site.toLowerCase().trim() + '|' + masterSecret;
+    var keyMaterial = await crypto.subtle.importKey(
+      'raw', encoder.encode(input), 'PBKDF2', false, ['deriveBits']
+    );
+    var bits = await crypto.subtle.deriveBits({
+      name: 'PBKDF2',
+      salt: encoder.encode(pbkdf2Salt || 'salt'),
+      iterations: 600000,
+      hash: 'SHA-256'
+    }, keyMaterial, 256);
+    var bytes = new Uint8Array(bits);
+
+    var pool = CHARSETS.upper + CHARSETS.lower + CHARSETS.digits;
+    var required = [CHARSETS.upper, CHARSETS.lower, CHARSETS.digits];
+
+    if (specialCharset && specialCharset.length > 0) {
+      pool += specialCharset;
+      required.push(specialCharset);
+    }
+
+    var password = [];
+    var byteIdx = 0;
+    for (var i = 0; i < length; i++) {
+      var val = (bytes[byteIdx % 32] << 8) | bytes[(byteIdx + 1) % 32];
+      byteIdx += 2;
+      if (byteIdx >= 64) byteIdx = 0;
+      password.push(pool[val % pool.length]);
+    }
+
+    for (var r = 0; r < required.length; r++) {
+      var pos = bytes[(r * 3 + 1) % 32] % length;
+      var charIdx = bytes[(r * 3 + 2) % 32] % required[r].length;
+      password[pos] = required[r][charIdx];
+    }
+
+    return password.join('');
+  }
+
+  function clearResult() {
+    currentPassword = '';
+    resultArea.classList.remove('visible');
+    copyBtn.classList.remove('copied');
+    copyBtn.textContent = 'Copy';
+  }
+
+  function updateGenBtn() {
+    genBtn.disabled = !siteEl.value.trim() || !saltEl.value.trim();
+  }
+
+  function setLength(val) {
+    val = Math.max(4, Math.min(64, val));
+    lengthNum.value = val;
+    lengthRange.value = val;
+    lengthDisplay.textContent = val;
+  }
+
+  function showStats(pw) {
+    var counts = {
+      upper:   (pw.match(/[A-Z]/g) || []).length,
+      lower:   (pw.match(/[a-z]/g) || []).length,
+      digits:  (pw.match(/[0-9]/g) || []).length,
+      symbols: (pw.match(/[^A-Za-z0-9]/g) || []).length
+    };
+    var colors = { upper: '#f472b6', lower: '#60a5fa', digits: '#c4f042', symbols: '#fbbf24' };
+    var labels = { upper: 'upper', lower: 'lower', digits: 'digits', symbols: 'symbols' };
+    var html = '';
+    var keys = ['upper','lower','digits','symbols'];
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (counts[k] > 0) {
+        html += '<span><span class="stat-dot" style="background:' + colors[k] + '"></span>' + counts[k] + ' ' + labels[k] + '</span>';
+      }
+    }
+    charStats.innerHTML = html;
+  }
+
+  function updateMetadata() {
+    var length = parseInt(lengthNum.value) || 12;
+    resultMetadata.value = siteEl.value.toLowerCase() + '|' + specialChars + '|' + length;
+  }
+
+  function parseMetadata(metadata) {
+    var parts = metadata.split('|');
+    if (parts.length === 3) {
+      if (parts[0]) siteEl.value = parts[0];
+      if (parts[1] !== undefined) { specialChars = parts[1]; specialCharsEl.value = parts[1]; }
+      if (parts[2]) setLength(parseInt(parts[2]));
+      updateGenBtn();
+    }
+  }
+
+  resultMetadata.addEventListener('input', function() { parseMetadata(resultMetadata.value); });
+  siteEl.addEventListener('input', function() { updateGenBtn(); clearResult(); });
+  saltEl.addEventListener('input', function() { updateGenBtn(); clearResult(); });
+  siteEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') genBtn.click(); });
+  saltEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') genBtn.click(); });
+
+  toggleSaltBtn.addEventListener('click', function() {
+    var show = saltEl.type === 'password';
+    saltEl.type = show ? 'text' : 'password';
+    toggleSaltBtn.textContent = show ? 'HIDE' : 'SHOW';
+  });
+
+  specialCharsEl.addEventListener('input', function() {
+    specialChars = specialCharsEl.value;
+    updateMetadata();
+    clearResult();
+  });
+
+  lengthNum.addEventListener('input', function() {
+    setLength(parseInt(lengthNum.value) || 4);
+    updateMetadata();
+    clearResult();
+  });
+  lengthRange.addEventListener('input', function() {
+    setLength(parseInt(lengthRange.value));
+    updateMetadata();
+    clearResult();
+  });
+  siteEl.addEventListener('change', function() { updateMetadata(); });
+
+  genBtn.addEventListener('click', async function() {
+    if (!siteEl.value.trim() || !saltEl.value.trim()) return;
+    genBtn.disabled = true;
+    genBtn.textContent = 'Deriving\u2026';
+    try {
+      currentPassword = await derivePassword(
+        siteEl.value, saltEl.value,
+        parseInt(lengthNum.value) || 12,
+        specialChars,
+        pbkdf2SaltEl.value
+      );
+      resultPw.textContent = currentPassword;
+      showStats(currentPassword);
+      updateMetadata();
+      resultArea.classList.add('visible');
+      copyBtn.classList.remove('copied');
+      copyBtn.textContent = 'Copy';
+    } catch (err) {
+      resultPw.textContent = 'Error: ' + err.message;
+      resultArea.classList.add('visible');
+    }
+    genBtn.textContent = 'Generate Password';
+    updateGenBtn();
+  });
+
+  copyBtn.addEventListener('click', function() {
+    if (!currentPassword) return;
+    navigator.clipboard.writeText(currentPassword).then(function() {
+      copyBtn.classList.add('copied');
+      copyBtn.textContent = '\u2713 Copied';
+      setTimeout(function() { copyBtn.classList.remove('copied'); copyBtn.textContent = 'Copy'; }, 2000);
+    });
+  });
+
+  copyMetadataBtn.addEventListener('click', function() {
+    var metadata = resultMetadata.value;
+    if (!metadata) return;
+    navigator.clipboard.writeText(metadata).then(function() {
+      copyMetadataBtn.classList.add('copied');
+      copyMetadataBtn.textContent = '\u2713';
+      setTimeout(function() { copyMetadataBtn.classList.remove('copied'); copyMetadataBtn.textContent = 'COPY'; }, 2000);
+    });
+  });
+
+  specialCharsEl.value = DEFAULT_SPECIAL_CHARS;
+  specialChars = DEFAULT_SPECIAL_CHARS;
+  updateMetadata();
+  updateGenBtn();
+  initCanary();
+
+})();
+</script>
+
+</body>
+</html>
