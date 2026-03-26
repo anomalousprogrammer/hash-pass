@@ -2,7 +2,7 @@
   "name": "Hashpass",
   "short_name": "Hashpass",
   "description": "Deterministic password generator",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0a0a0b",
   "theme_color": "#0a0a0b",
