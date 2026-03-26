@@ -775,7 +775,7 @@
   var swStatus = document.getElementById('sw-status');
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('/hashpass-sw.js')
       .then(function() {
         swStatus.innerHTML = '<span class="offline">Cached offline</span> \u00b7 tap canary badge to manage';
         function checkUpdate() {
