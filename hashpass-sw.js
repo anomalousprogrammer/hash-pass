@@ -1,7 +1,7 @@
 const CACHE_NAME = 'hashpass-v1';
 const ASSETS = [
-  '/index.html',
-  '/hashpass-manifest.json'
+  './index.html',
+  './hashpass-manifest.json'
 ];
 
 // Install: cache all assets immediately
