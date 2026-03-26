@@ -39,11 +39,11 @@ self.addEventListener('fetch', event => {
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'CHECK_UPDATE') {
     // Fetch fresh copy from network, compare with cached
-    fetch('/index.html', { cache: 'no-store' })
+    fetch('./index.html', { cache: 'no-store' })
       .then(response => response.text())
       .then(async newText => {
         const cache = await caches.open(CACHE_NAME);
-        const cachedResponse = await cache.match('/index.html');
+        const cachedResponse = await cache.match('./index.html');
         const cachedText = cachedResponse ? await cachedResponse.text() : '';
 
         // Hash both versions
