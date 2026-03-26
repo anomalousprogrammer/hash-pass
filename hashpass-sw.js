@@ -72,7 +72,14 @@ self.addEventListener('message', event => {
 
   if (event.data && event.data.type === 'APPLY_UPDATE') {
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(ASSETS))
+      .then(cache =>
+        Promise.all(
+          ASSETS.map(url =>
+            fetch(new Request(url, { cache: 'reload' }))
+              .then(response => cache.put(url, response))
+          )
+        )
+      )
       .then(() => {
         event.source.postMessage({ type: 'UPDATE_APPLIED' });
       });
